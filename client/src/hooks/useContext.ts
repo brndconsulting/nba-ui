@@ -33,13 +33,21 @@ export interface Context {
   active_team_key?: string;
 }
 
-export function useContext(ownerId: string) {
+export function useContext(ownerId: string | null) {
   const [context, setContext] = useState<Context | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchContext = async () => {
+      // If no owner ID, show "no owner" state
+      if (!ownerId) {
+        setContext(null);
+        setError("No owner ID provided");
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const response = await fetch(
@@ -74,15 +82,15 @@ export function useContext(ownerId: string) {
       }
     };
 
-    if (ownerId) {
-      fetchContext();
-    }
+    fetchContext();
   }, [ownerId]);
 
-  const setActiveContext = async (
-    leagueKey: string,
-    teamKey?: string
-  ): Promise<boolean> => {
+  const setActiveContext = async (leagueKey: string, teamKey?: string): Promise<boolean> => {
+    if (!ownerId) {
+      setError("No owner ID set");
+      return false;
+    }
+
     try {
       const response = await fetch(
         `${API_BASE}/v1/context/active?owner_id=${ownerId}`,

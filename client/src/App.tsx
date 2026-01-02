@@ -31,8 +31,9 @@ function Router() {
 }
 
 function App() {
-  // Get owner ID from localStorage or environment
-  const ownerId = localStorage.getItem('owner_id') || 'default_owner';
+  // Get owner ID from localStorage
+  // If not set, ContextGate will show "no owner" state
+  const ownerId = localStorage.getItem('owner_id') || null;
 
   return (
     <ErrorBoundary>

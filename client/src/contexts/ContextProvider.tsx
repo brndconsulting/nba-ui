@@ -24,7 +24,7 @@ export function ContextProvider({
   ownerId,
 }: {
   children: React.ReactNode;
-  ownerId: string;
+  ownerId: string | null;
 }) {
   const { context, loading, error, setActiveContext } = useContextHook(ownerId);
   const [activeLeague, setActiveLeague] = useState<League | null>(null);
