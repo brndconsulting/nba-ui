@@ -13,7 +13,7 @@ import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function ContextGate({ children }: { children: React.ReactNode }) {
-  const { context, loading, error, activeLeague, setActiveContext } = useAppContext();
+  const { context, loading, error, setActiveContext } = useAppContext();
   const [selectedLeagueKey, setSelectedLeagueKey] = useState<string>('');
   const [selectedTeamKey, setSelectedTeamKey] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);

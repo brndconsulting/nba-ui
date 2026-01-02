@@ -6,7 +6,6 @@
 
 import { useAppContext } from "@/contexts/ContextProvider";
 import { Button } from "@/components/ui/button";
-import { ContextGate } from "./ContextGate";
 import { ChevronDown } from "lucide-react";
 
 export function ContextSelector() {
