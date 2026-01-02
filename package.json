@@ -11,7 +11,11 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "lint": "eslint client/src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sync:bootstrap": "cd ../nba-api && make sync-bootstrap OWNER_ID=$OWNER_ID",
+    "sync:full": "cd ../nba-api && make sync-full OWNER_ID=$OWNER_ID",
+    "sync:incremental": "cd ../nba-api && make sync-incremental OWNER_ID=$OWNER_ID",
+    "sync:fixtures-record": "cd ../nba-api && make sync-fixtures-record OWNER_ID=$OWNER_ID"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
