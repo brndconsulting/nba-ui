@@ -43,10 +43,23 @@ export default [
         },
       ],
 
-      // ===== P0: Prohibir estilos inline =====
+      // ===== P0: Prohibir estilos inline Y tipografia inline =====
       'react/style-prop-object': 'error',
+      
+      // ===== P0: Prohibir valores de tipografia arbitrarios (text-[...], leading-[...], tracking-[...]) =====
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/\b(text|leading|tracking)-\[/]',
+          message: 'Arbitrary typography values (text-[...], leading-[...], tracking-[...]) are not allowed. Use standard Tailwind classes: text-xs/sm/base/lg/xl/2xl, leading-none/tight/snug/normal/relaxed/loose, tracking-tighter/tight/normal/wide/wider/widest. See index.css @layer base for typography scale.',
+        },
+        {
+          selector: 'JSXAttribute[name.name="style"] > JSXExpressionContainer ObjectExpression Property[key.name=/fontSize|lineHeight|letterSpacing/]',
+          message: 'Inline style typography (style={{ fontSize, lineHeight, letterSpacing }}) is not allowed. Use Tailwind classes instead. See index.css for typography utilities.',
+        },
+      ],
 
-      // ===== P0: Prohibir imports de UI externas =====
+      // ===== P0: Prohibir imports de UI externas y colores literales =====
       'no-restricted-imports': [
         'error',
         {

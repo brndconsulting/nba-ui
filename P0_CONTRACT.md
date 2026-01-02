@@ -33,7 +33,54 @@
 
 ---
 
-## 2️⃣ Tokens Permitidos (Colores/Estados)
+## 2º Tipografia Gobernada (P0 Lock)
+
+**Fuente de verdad:** `index.css` (@theme inline + @layer base) + Tailwind estándar
+
+### ✅ Permitido (UNICO camino)
+
+```
+Clases Tailwind estándar:
+  text-xs, text-sm, text-base, text-lg, text-xl, text-2xl
+  
+Leading (interlineado):
+  leading-none, leading-tight, leading-snug, leading-normal, 
+  leading-relaxed, leading-loose
+  
+Tracking (espaciado de letras):
+  tracking-tighter, tracking-tight, tracking-normal, 
+  tracking-wide, tracking-wider, tracking-widest
+  
+Fonts (definidas en @theme):
+  font-sans, font-mono
+```
+
+### ❌ Prohibido (Bloquea ESLint + CI)
+
+```
+Valores arbitrarios:
+  text-[13px], leading-[1.35], tracking-[0.2px]
+  
+Estilos inline:
+  style={{ fontSize: "14px" }}, style={{ lineHeight: "1.5" }}
+  
+Mezclar fonts no definidas:
+  font-["Custom Font"], font-[Georgia]
+  
+Cambiar tipografia "porque queda mejor":
+  Cada componente debe usar escala estándar
+```
+
+**Escala tipografica (P0 Default):**
+- Body: `text-sm leading-normal`
+- Secondary/muted: `text-sm text-muted-foreground`
+- Titles: `text-lg/xl font-semibold leading-tight`
+- Labels: `text-xs leading-none tracking-tight`
+- Tables: `text-sm` (headers `text-xs uppercase tracking-wide`)
+
+---
+
+## 3º Tokens Permitidos (Colores/Estados))
 
 ### ✅ Permitido (Tokens Shadcn)
 

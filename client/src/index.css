@@ -4,6 +4,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Typography Scale (P0 Lock: no arbitrary values allowed) */
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: "Menlo", "Monaco", monospace;
+  
+  /* Radius tokens */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -340,12 +345,47 @@
 }
 
 @layer base {
+  /* Typography defaults (P0 Lock) */
+  body {
+    @apply text-sm leading-normal;
+  }
+  
+  h1 {
+    @apply text-2xl font-semibold leading-tight;
+  }
+  
+  h2 {
+    @apply text-xl font-semibold leading-tight;
+  }
+  
+  h3 {
+    @apply text-lg font-semibold leading-snug;
+  }
+  
+  h4, h5, h6 {
+    @apply text-base font-semibold leading-snug;
+  }
+  
+  small, .text-xs {
+    @apply text-xs leading-none tracking-tight;
+  }
+  
+  code, pre {
+    @apply font-mono text-sm;
+  }
+  
+  table {
+    @apply text-sm;
+  }
+  
+  table thead {
+    @apply text-xs uppercase tracking-wide;
+  }
+  
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+  
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -385,6 +425,31 @@
     min-height: 0;
     min-width: 0;
   }
+  
+  /* Typography utility classes (P0 Lock) */
+  .text-body {
+    @apply text-sm leading-normal;
+  }
+  
+  .text-body-sm {
+    @apply text-sm leading-snug;
+  }
+  
+  .text-label {
+    @apply text-xs leading-none tracking-tight;
+  }
+  
+  .text-label-sm {
+    @apply text-xs leading-none tracking-tighter;
+  }
+  
+  .text-heading {
+    @apply text-lg font-semibold leading-tight;
+  }
+  
+  .text-heading-lg {
+    @apply text-2xl font-semibold leading-tight;
+  }
 
   @media (min-width: 640px) {
     .container {
@@ -401,3 +466,9 @@
     }
   }
 }
+
+/* ===== P0 TYPOGRAPHY LOCK ===== */
+/* Prohibido: text-[...], leading-[...], tracking-[...], style={{ fontSize/lineHeight/letterSpacing }} */
+/* Permitido: text-xs/sm/base/lg/xl/2xl, leading-none/tight/snug/normal/relaxed/loose, tracking-tighter/tight/normal/wide/wider/widest */
+/* Fuente de verdad: Tailwind estandar + @theme inline + @layer base */
+/* ESLint bloquea arbitrarios. Ver eslint.config.js para reglas. */
