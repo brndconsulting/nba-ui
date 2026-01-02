@@ -1,0 +1,70 @@
+name: P0 Enforcement (Lint + TypeScript)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  p0-enforce:
+    name: P0 Contract Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint (P0 Rule: 0 errors)
+        run: npm run lint
+        continue-on-error: false
+
+      - name: TypeScript (P0 Rule: No type errors)
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Check for hardcoded colors (anti-pattern)
+        run: |
+          echo "Checking for hardcoded colors..."
+          if grep -r "text-gray-\|bg-white\|text-black\|border-gray-\|#[0-9a-f]\{3,6\}\|rgb(\|hsl(" client/src --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js"; then
+            echo "❌ FAILED: Hardcoded colors found. Use Tailwind tokens instead."
+            exit 1
+          else
+            echo "✅ PASSED: No hardcoded colors detected."
+          fi
+
+      - name: Check for external UI libraries (anti-pattern)
+        run: |
+          echo "Checking for external UI libraries..."
+          if grep -r "@mui\|antd\|@chakra-ui\|react-bootstrap\|mantine" client/src --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js"; then
+            echo "❌ FAILED: External UI libraries found. Use shadcn/ui only."
+            exit 1
+          else
+            echo "✅ PASSED: No external UI libraries detected."
+          fi
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ P0 CONTRACT VALIDATED"
+          echo "- ESLint: 0 errors"
+          echo "- TypeScript: OK"
+          echo "- No hardcoded colors"
+          echo "- No external UI libraries"
+          echo "Ready for merge!"
+
+      - name: Failure Summary
+        if: failure()
+        run: |
+          echo "❌ P0 CONTRACT VIOLATED"
+          echo "Fix all errors above before merge."
+          exit 1
