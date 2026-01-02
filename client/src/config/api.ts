@@ -1,8 +1,11 @@
 /**
  * Configuración centralizada de API
+ * 
+ * En dev: usa /api (proxy de Vite al backend)
+ * En prod: usa URL pública del backend
  */
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'https://8000-ijlgepjs4b0mok7qfhfv6-668991c1.sg1.manus.computer';
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export const API_ENDPOINTS = {
   // Context
