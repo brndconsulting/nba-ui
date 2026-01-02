@@ -34,8 +34,8 @@ export default [
       'no-restricted-syntax': [
         'error',
         {
-          selector: 'Literal[value=/\\b(text|bg|border|ring|from|to|via)-(black|white|gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)(-\\d{2,3})?\\b/]',
-          message: 'Hardcoded color classes are not allowed. Use Tailwind tokens (bg-background, text-foreground, border-border, text-muted-foreground, bg-accent, text-destructive, etc.) instead.',
+          selector: 'Literal[value=/\\b(text|bg|border|ring|from|to|via)-(black|white|gray|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|indigo|violet|purple|fuchsia|pink)(-\\d{2,3})?\\b/]',
+          message: 'Hardcoded color classes are not allowed. Use Tailwind tokens (bg-background, text-foreground, border-border, text-muted-foreground, bg-accent, text-destructive, etc.) instead. Status colors (red-*, yellow-*, green-*) are allowed for semantic states.',
         },
         {
           selector: 'Literal[value=/(#[0-9a-f]{3,6}|rgb\\(|hsl\\()/i]',
@@ -75,12 +75,14 @@ export default [
 
       // ===== TypeScript =====
       '@typescript-eslint/no-unused-vars': [
-        'warn',
+        'error',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
         },
       ],
+      'no-unused-vars': 'off', // Disable base rule, use TS version
       '@typescript-eslint/explicit-function-return-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
 

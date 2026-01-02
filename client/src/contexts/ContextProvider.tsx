@@ -14,7 +14,7 @@ interface ContextContextType {
   error: string | null;
   activeLeague: League | null;
   activeTeam: Team | null;
-  setActiveContext: (leagueKey: string, teamKey?: string) => Promise<boolean>;
+  setActiveContext: (_leagueKey: string, _teamKey?: string) => Promise<boolean>;
 }
 
 const ContextContext = createContext<ContextContextType | undefined>(undefined);

@@ -123,7 +123,6 @@ export function MapView({
   onMapReady,
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<google.maps.Map | null>(null);
 
   const init = usePersistFn(async () => {
     await loadMapScript();
@@ -131,7 +130,7 @@ export function MapView({
       console.error("Map container not found");
       return;
     }
-    map.current = new window.google.maps.Map(mapContainer.current, {
+    const mapInstance = new window.google.maps.Map(mapContainer.current, {
       zoom: initialZoom,
       center: initialCenter,
       mapTypeControl: true,
@@ -141,7 +140,7 @@ export function MapView({
       mapId: "DEMO_MAP_ID",
     });
     if (onMapReady) {
-      onMapReady(map.current);
+      onMapReady(mapInstance);
     }
   });
 

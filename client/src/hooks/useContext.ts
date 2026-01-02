@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { contextSchema } from '@/lib/schemas/context';
-import { API_BASE, API_ENDPOINTS } from '@/config/api';
+import { API_BASE } from '@/config/api';
 
 export interface League {
   league_key: string;

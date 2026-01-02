@@ -5,7 +5,6 @@
  * - 100% shadcn/ui
  * - Textos desde copy keys
  */
-import { useAppContext } from '@/contexts/ContextProvider';
 import { ContextGate } from '@/components/ContextGate';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -25,25 +24,12 @@ interface Recommendation {
 }
 
 export function Waiver() {
-  const { context } = useAppContext();
-
   // Estados simulados (sin data real = EmptyState honesto)
   const isLoading = false;
   const isEmpty = true;
   const isError = false;
   const recommendations: Recommendation[] = [];
   const lastSyncAt = new Date();
-
-  // Traducir copy key a texto
-  const t = (key: string, params?: Record<string, unknown>): string => {
-    let text = key;
-    if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        text = text.replace(`{{${k}}}`, String(v));
-      });
-    }
-    return text;
-  };
 
   // Helper para color de acción (usando tokens shadcn)
   const getActionColor = (action: string) => {

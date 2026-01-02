@@ -15,8 +15,8 @@ import { BASE_COLORS, ACCENT_THEMES, type BaseColor, type AccentTheme } from "@/
 interface ThemeContextType {
   base: BaseColor;
   accent: AccentTheme;
-  setBase: (base: BaseColor) => void;
-  setAccent: (accent: AccentTheme) => void;
+  setBase: (_base: BaseColor) => void;
+  setAccent: (_accent: AccentTheme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);

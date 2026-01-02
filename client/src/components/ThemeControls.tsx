@@ -8,7 +8,6 @@
 
 import { useTheme } from "@/contexts/ThemeProvider";
 import { BASE_COLORS, ACCENT_THEMES, THEME_LABELS, type BaseColor, type AccentTheme } from "@/config/themes";
-import { copy } from "@/lib/copy/es";
 
 import {
   Select,

@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-type noop = (...args: any[]) => any;
+type noop = (..._args: any[]) => any;
 
 /**
  * usePersistFn instead of useCallback to reduce cognitive load
