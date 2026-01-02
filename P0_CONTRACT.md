@@ -173,7 +173,24 @@ https://tu-frontend.com/__theme-matrix
 
 ---
 
-## 8️⃣ CI/CD: Bloqueante (No Bypass)
+### 8º Combinaciones de Temas (80 Total)
+
+**Desglose correcto:**
+- **Bases (5):** `zinc`, `slate`, `stone`, `gray`, `neutral`
+- **Accents (8):** `default`, `blue`, `green`, `orange`, `red`, `rose`, `violet`, `yellow`
+- **Modos (2):** Light, Dark
+- **Total:** 5 × 8 × 2 = **80 combinaciones**
+
+**Validación en PR:**
+- [ ] Revisado en light + dark
+- [ ] Captura de `/__theme-matrix` en base-slate + accent-violet (light)
+- [ ] Captura de `/__theme-matrix` en base-neutral + accent-yellow (dark)
+- [ ] Contraste OK en Card/Table/Badge/Alert/Input/Skeleton
+- [ ] Focus ring visible (tabbing)
+
+---
+
+## 9º CI/CD: Bloqueante (No Bypass)
 
 ### GitHub Actions (Obligatorio)
 
@@ -195,7 +212,23 @@ Bloquea commits si aparece:
 
 ---
 
-## 9️⃣ Regla Anti-Creatividad (Explícita)
+### 10º Prohibición Anti-Dummy (Data P0)
+
+**Regla de hierro:** Prohibido "seed" inventado para UI. La BD se llena SOLO por:
+
+✅ **Sync real desde Yahoo** (owner real en dev/staging)
+
+✅ **Fixtures grabadas de Yahoo** (snapshots reales capturados una vez, con `source="yahoo"` + `captured_at` explícito)
+
+❌ **Prohibido:** números inventados, ligas fake, teams dummy, porcentajes aleatorios, rankings sin fuente
+
+**Aplicación:** Si falta un atributo de Yahoo, la UI no lo imprime; se oculta columna/bloque o EmptyState. Nunca se inventa.
+
+**Evidencia:** Cada snapshot debe tener `source` y `captured_at` en la BD. ESLint + E2E valida que no hay hardcoded numbers en componentes.
+
+---
+
+## 11º Regla Anti-Creatividad (Explícita)
 
 Si alguien propone:
 
@@ -208,7 +241,7 @@ Si alguien propone:
 
 ---
 
-## 🔟 Checklist de Validación (Pre-Merge)
+## 12º Checklist de Validación (Pre-Merge)
 
 **Reviewer debe verificar:**
 
