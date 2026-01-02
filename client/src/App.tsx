@@ -3,38 +3,51 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
-
+import { ThemeProvider as NextThemesProvider } from "./contexts/ThemeContext";
+import { ThemeProvider } from "./contexts/ThemeProvider";
+import { ContextProvider } from "./contexts/ContextProvider";
+import { ContextGate } from "./components/ContextGate";
+import Home from '@/pages/Home';
+import Matchup from '@/pages/Matchup';
+import { Waiver } from '@/pages/Waiver';
+import ThemeMatrix from '@/pages/ThemeMatrix';
+import { Header } from '@/components/Header';
 
 function Router() {
   return (
-    <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <Header />
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/matchup" component={Matchup} />
+        <Route path="/waiver" component={Waiver} />
+        <Route path="/__theme-matrix" component={ThemeMatrix} />
+        <Route path={"/404"} component={NotFound} />
+        {/* Final fallback route */}
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
+  // Get owner ID from localStorage or environment
+  const ownerId = localStorage.getItem('owner_id') || 'default_owner';
+
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <NextThemesProvider defaultTheme="light" switchable>
+        <ThemeProvider>
+          <ContextProvider ownerId={ownerId}>
+            <TooltipProvider>
+              <Toaster />
+              <ContextGate>
+                <Router />
+              </ContextGate>
+            </TooltipProvider>
+          </ContextProvider>
+        </ThemeProvider>
+      </NextThemesProvider>
     </ErrorBoundary>
   );
 }
