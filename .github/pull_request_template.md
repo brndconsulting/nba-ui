@@ -17,6 +17,8 @@
 - [ ] **Sin colores hardcodeados** (solo tokens)
 - [ ] **Sin strings literales** (copy desde keys)
 - [ ] **Sin números inventados** (Empty/Error/Stale si falta data)
+- [ ] **Tipografía validada** (tamaños/leading/tracking en Light/Dark + todos los themes)
+- [ ] **Sin clases tipográficas arbitrarias** (no text-[...], leading-[...], tracking-[...])
 
 ---
 
@@ -36,6 +38,7 @@ Qué cambios hace este PR:
 
 - **Componentes shadcn usados:** `[Button, Card, Alert, ...]`
 - **Tokens usados:** `[bg-background, text-foreground, ...]`
+- **Clases tipográficas usadas:** `[text-sm, leading-normal, tracking-tight, ...]`
 - **Copy keys usadas:** `[copy.waiver.title, ...]`
 - **Estados manejados:** `[Empty, Error, Stale, ...]`
 
@@ -48,6 +51,8 @@ Qué cambios hace este PR:
 - ❌ Contiene colores hardcodeados (no tokens)
 - ❌ Contiene imports de UI externas (`@mui`, `antd`, `@chakra-ui`, etc.)
 - ❌ Contiene strings literales en componentes (no copy keys)
+- ❌ Contiene clases tipográficas arbitrarias (text-[...], leading-[...], tracking-[...])
+- ❌ Contiene estilos inline de tipografía (style={{ fontSize, lineHeight, letterSpacing }})
 - ❌ Contiene números inventados (sin Empty/Error/Stale)
 - ❌ ESLint falla o TypeScript falla
 - ❌ No incluye evidencia de Theme Matrix
