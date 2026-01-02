@@ -1,7 +1,14 @@
 /**
- * ContextGate - bloquea acceso sin contexto activo
- * Muestra selector de liga/equipo si no hay selección
- * Solo renderiza children si hay contexto válido
+ * ContextGate - Guards access without active context
+ * 
+ * States (per spec 0.2):
+ * - Loading: Fetching context from API
+ * - Empty: No leagues found for owner
+ * - Missing: Context exists but no active selection
+ * - Error: API error or token invalid
+ * - Ready: Has active league and team → render children
+ * 
+ * Design: 100% shadcn/ui, no hardcode estético
  */
 import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/ContextProvider';
@@ -24,7 +31,7 @@ export function ContextGate({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Cargando contexto...</CardTitle>
+            <CardTitle>Loading context...</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Skeleton className="h-10" />
@@ -60,14 +67,14 @@ export function ContextGate({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Sin ligas disponibles</CardTitle>
+            <CardTitle>No leagues found</CardTitle>
             <CardDescription>
-              No se encontraron ligas para tu cuenta
+              No fantasy leagues found for your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Por favor, verifica tu cuenta de Yahoo Fantasy NBA
+              Please verify your Yahoo Fantasy account is connected and has active leagues.
             </p>
           </CardContent>
         </Card>
@@ -92,7 +99,7 @@ export function ContextGate({ children }: { children: React.ReactNode }) {
     try {
       const success = await setActiveContext(selectedLeagueKey, selectedTeamKey);
       if (!success) {
-        alert('Error al cambiar contexto');
+        alert('Error setting context');
       }
     } finally {
       setIsSubmitting(false);
@@ -103,18 +110,18 @@ export function ContextGate({ children }: { children: React.ReactNode }) {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Selecciona tu liga y equipo</CardTitle>
+          <CardTitle>Select League & Team</CardTitle>
           <CardDescription>
-            Elige dónde quieres jugar
+            Choose your active league and team to continue
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Liga */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Liga</label>
+            <label className="text-sm font-medium">League</label>
             <Select value={selectedLeagueKey} onValueChange={setSelectedLeagueKey}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona una liga" />
+                <SelectValue placeholder="Select a league" />
               </SelectTrigger>
               <SelectContent>
                 {leagues.map((league) => (
@@ -129,10 +136,10 @@ export function ContextGate({ children }: { children: React.ReactNode }) {
           {/* Equipo */}
           {selectedLeague && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Equipo</label>
+              <label className="text-sm font-medium">Team</label>
               <Select value={selectedTeamKey} onValueChange={setSelectedTeamKey}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona tu equipo" />
+                  <SelectValue placeholder="Select your team" />
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((team) => (
@@ -151,7 +158,7 @@ export function ContextGate({ children }: { children: React.ReactNode }) {
             disabled={!selectedLeagueKey || !selectedTeamKey || isSubmitting}
             className="w-full"
           >
-            {isSubmitting ? 'Cargando...' : 'Continuar'}
+            {isSubmitting ? 'Loading...' : 'Continue'}
           </Button>
         </CardContent>
       </Card>

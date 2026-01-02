@@ -24,14 +24,14 @@ export const leagueSchema = z.object({
 export const contextDataSchema = z.object({
   owner_id: z.string(),
   leagues: z.array(leagueSchema),
-  active_league_key: z.string().optional(),
-  active_team_key: z.string().optional(),
+  active_league_key: z.string().nullable().optional(),
+  active_team_key: z.string().nullable().optional(),
 });
 
 export const contextSchema = z.object({
   success: z.boolean(),
   data: contextDataSchema.nullable(),
-  errors: z.array(z.any()).default([]),
+  errors: z.array(z.any()).nullable().default([]),
   meta: z.any(),
   capabilities: z.any().optional(),
 });

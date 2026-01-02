@@ -29,8 +29,8 @@ export interface Team {
 export interface Context {
   owner_id: string;
   leagues: League[];
-  active_league_key?: string;
-  active_team_key?: string;
+  active_league_key?: string | null;
+  active_team_key?: string | null;
 }
 
 export function useContext(ownerId: string | null) {
@@ -40,8 +40,11 @@ export function useContext(ownerId: string | null) {
 
   useEffect(() => {
     const fetchContext = async () => {
+      console.log('[useContext] Starting fetch, ownerId:', ownerId);
+      
       // If no owner ID, show "no owner" state
       if (!ownerId) {
+        console.log('[useContext] No owner ID, setting error');
         setContext(null);
         setError("No owner ID provided");
         setLoading(false);
@@ -50,6 +53,7 @@ export function useContext(ownerId: string | null) {
 
       try {
         setLoading(true);
+        console.log('[useContext] Fetching from:', `${API_BASE}/v1/context?owner_id=${ownerId}`);
         const response = await fetch(
           `${API_BASE}/v1/context?owner_id=${ownerId}`,
           {
@@ -58,11 +62,15 @@ export function useContext(ownerId: string | null) {
             },
           }
         );
+        console.log('[useContext] Response status:', response.status);
 
         const data = await response.json();
+        console.log('[useContext] Raw data:', data);
 
         // Validar con Zod
+        console.log('[useContext] Validating with Zod...');
         const validated = contextSchema.parse(data);
+        console.log('[useContext] Validated:', validated);
 
         if (validated.success && validated.data) {
           setContext(validated.data);
@@ -92,17 +100,19 @@ export function useContext(ownerId: string | null) {
     }
 
     try {
+      // IMPORTANT: Use query params, NOT JSON body (confirmed working approach)
+      const params = new URLSearchParams();
+      params.set('owner_id', ownerId);
+      params.set('league_key', leagueKey);
+      if (teamKey) params.set('team_key', teamKey);
+      
       const response = await fetch(
-        `${API_BASE}/v1/context/active?owner_id=${ownerId}`,
+        `${API_BASE}/v1/context/active?${params.toString()}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            league_key: leagueKey,
-            team_key: teamKey,
-          }),
         }
       );
 

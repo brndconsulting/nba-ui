@@ -13,6 +13,7 @@ import { useAppContext } from "@/contexts/ContextProvider";
 import { ThemeControls } from "./ThemeControls";
 import { ModeToggle } from "./ModeToggle";
 import { ContextSelector } from "./ContextSelector";
+import { SyncStatusIndicator } from "./SyncStatusIndicator";
 
 import {
   NavigationMenu,
@@ -70,8 +71,11 @@ export function Header() {
           </div>
         )}
 
-        {/* Right: Theme + Mode + Context */}
+        {/* Right: Sync Status + Theme + Mode + Context */}
         <div className="flex items-center gap-3">
+          {/* Sync Status Indicator */}
+          <SyncStatusIndicator />
+
           {/* Theme Controls */}
           <ThemeControls />
 
