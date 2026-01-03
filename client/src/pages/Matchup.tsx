@@ -1,218 +1,230 @@
 /**
- * Página de Matchup - UI dinámica según capabilities
- * - Tabs: Resumen, Categorías/Puntos, Detalle
- * - Skeleton sin números, StaleState con timestamp
- * - 100% shadcn/ui
+ * Matchup Page (Dashboard Tab)
+ * 
+ * Layout order per spec v1.3:
+ * 1. Manager vs Manager
+ * 2. Insider Recommendations (4 cards 2x2)
+ * 3. Real vs Projection
+ * 4. Week Matchup Card + Breakdown
+ * 5. Player Alerts
+ * 6. All Matchups This Week
+ * 7. Standings Snapshot
+ * 
+ * 100% shadcn/ui components only
  */
-import React, { useMemo } from 'react';
 import { useAppContext } from '@/contexts/ContextProvider';
 import { useMatchups, useCapabilities } from '@/hooks/useMatchups';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Clock } from 'lucide-react';
-import { copy } from '@/lib/copy/es';
+import { useLeagueManagers } from '@/hooks/useLeagueManagers';
+import { useRoster } from '@/hooks/useRoster';
+import { useStandings } from '@/hooks/useStandings';
+import { useSettings } from '@/hooks/useSettings';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Clock, AlertCircle } from 'lucide-react';
+import { StaleState, ErrorState, MissingState } from '@/components/states';
+import {
+  ManagerVsManager,
+  InsiderRecommendations,
+  RealVsProjection,
+  WeekMatchupCard,
+  PlayerAlerts,
+  StandingsSnapshot,
+  AllMatchupsThisWeek,
+} from '@/components/dashboard';
+
+function getTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function StaleDataAlert({
+  lastSyncAt,
+  isStale,
+}: {
+  lastSyncAt: Date | null;
+  isStale: boolean;
+}) {
+  if (!isStale || !lastSyncAt) return null;
+
+  const timeAgo = getTimeAgo(lastSyncAt);
+
+  return (
+    <Alert>
+      <Clock className="h-4 w-4" />
+      <AlertTitle>Stale Data <span className="font-normal text-muted-foreground">{timeAgo}</span></AlertTitle>
+      <AlertDescription>
+        Matchup data may be outdated
+        <br />
+        <span className="text-xs text-muted-foreground">
+          Last synced: {lastSyncAt.toLocaleString()}
+        </span>
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 export default function Matchup() {
-  const { activeLeague, activeTeam, ownerId } = useAppContext();
-  
-  const { matchup, loading: matchupLoading, error: matchupError, lastSyncAt } = useMatchups(
-    activeLeague?.league_key || '',
-    activeTeam?.team_key,
-    ownerId || undefined
-  );
-  
-  const { capabilities, loading: capabilitiesLoading } = useCapabilities(
-    activeLeague?.league_key || '',
-    ownerId || undefined
-  );
+  const { activeLeague, activeTeam } = useAppContext();
+  const leagueKey = activeLeague?.league_key || '';
+  const teamKey = activeTeam?.team_key || '';
 
-  const isLoading = matchupLoading || capabilitiesLoading;
+  // Fetch all required data
+  const { 
+    matchup, 
+    allMatchups, 
+    currentWeek, 
+    loading: matchupsLoading, 
+    error: matchupsError,
+    lastSyncAt,
+    isStale,
+  } = useMatchups(leagueKey, teamKey);
 
-  // Determinar si mostrar categorías o puntos
-  const showCategories = capabilities?.has_categories_scoring ?? false;
-  const showPoints = capabilities?.has_points_scoring ?? true;
+  const { 
+    capabilities, 
+    loading: capabilitiesLoading,
+  } = useCapabilities(leagueKey);
 
-  // Calcular si los datos están desactualizados (más de 1 hora)
-  const isStale = useMemo(() => {
-    if (!lastSyncAt) return false;
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    return lastSyncAt < oneHourAgo;
-  }, [lastSyncAt]);
+  const {
+    managers,
+    loading: managersLoading,
+    error: managersError,
+    lastSyncAt: managersLastSyncAt,
+  } = useLeagueManagers(leagueKey);
 
-  if (!activeLeague || !activeTeam) {
+  const {
+    players: rosterPlayers,
+    loading: rosterLoading,
+    error: rosterError,
+    lastSyncAt: rosterLastSyncAt,
+  } = useRoster(teamKey);
+
+  const {
+    standings,
+    loading: standingsLoading,
+    error: standingsError,
+    lastSyncAt: standingsLastSyncAt,
+  } = useStandings(leagueKey);
+
+  const {
+    settings,
+    loading: settingsLoading,
+  } = useSettings(leagueKey);
+
+  // Find my manager and opponent manager
+  const myManager = managers.find(m => m.team_key === teamKey) || null;
+  const opponentTeamKey = matchup?.teams.find(t => t.team_key !== teamKey)?.team_key;
+  const opponentManager = opponentTeamKey 
+    ? managers.find(m => m.team_key === opponentTeamKey) || null
+    : null;
+
+  // Get stat categories from settings
+  const statCategories = settings?.stat_categories || capabilities?.stat_categories || [];
+
+  // Check if we have required inputs for Insider
+  const hasInsiderInputs = !!(settings && matchup && rosterPlayers.length > 0);
+  const missingInsiderInputs: string[] = [];
+  if (!settings) missingInsiderInputs.push('settings');
+  if (!matchup) missingInsiderInputs.push('matchups');
+  if (rosterPlayers.length === 0) missingInsiderInputs.push('roster');
+
+  // Build week actual data for RealVsProjection
+  const weekActual = matchup ? {
+    week: matchup.week,
+    score: matchup.teams.find(t => t.team_key === teamKey)?.points_total?.toString() || '0',
+    categories: statCategories.map(cat => ({
+      stat_id: cat.stat_id,
+      display_name: cat.display_name,
+      value: matchup.teams.find(t => t.team_key === teamKey)?.stats.find(s => s.stat_id === String(cat.stat_id))?.value || '-',
+    })),
+  } : null;
+
+  // Global error state
+  if (matchupsError) {
     return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Por favor selecciona una liga y equipo
-          </AlertDescription>
-        </Alert>
+      <div className="space-y-4">
+        <ErrorState 
+          errorId="matchups-fetch-error"
+          error={matchupsError}
+          timestamp={new Date().toISOString()}
+        />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">{copy.matchup.title}</h1>
-        <p className="text-muted-foreground">{copy.matchup.subtitle}</p>
-      </div>
+    <div className="space-y-6">
+      {/* Stale Data Alert */}
+      <StaleDataAlert lastSyncAt={lastSyncAt} isStale={isStale} />
 
-      {/* Error State */}
-      {matchupError && !isLoading && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{copy.matchup.error.invalidPayload}</AlertDescription>
-        </Alert>
-      )}
+      {/* 1. Manager vs Manager */}
+      <ManagerVsManager
+        myManager={myManager}
+        opponentManager={opponentManager}
+        loading={managersLoading}
+        error={managersError}
+        lastSyncAt={managersLastSyncAt}
+      />
 
-      {/* Stale State */}
-      {isStale && lastSyncAt && (
-        <Alert>
-          <Clock className="h-4 w-4" />
-          <AlertDescription>
-            {copy.matchup.stale.label} - {lastSyncAt.toLocaleString()}
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* 2. Insider Recommendations */}
+      <InsiderRecommendations
+        tips={[]} // No tips yet - backend doesn't provide them
+        loading={matchupsLoading || settingsLoading || rosterLoading}
+        error={null}
+        hasRequiredInputs={hasInsiderInputs}
+        missingInputs={missingInsiderInputs}
+      />
 
-      {/* Loading State */}
-      {isLoading && (
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-1/3" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Skeleton className="h-20" />
-            <Skeleton className="h-20" />
-            <Skeleton className="h-20" />
-          </CardContent>
-        </Card>
-      )}
+      {/* 3. Real vs Projection */}
+      <RealVsProjection
+        weekActual={weekActual}
+        projection={null} // Backend doesn't provide projection
+        loading={matchupsLoading}
+        error={null}
+        projectionAvailable={false}
+        projectionMissingReason="Projection not implemented by backend"
+        lastSyncAt={lastSyncAt?.toISOString() || null}
+      />
 
-      {/* Empty State */}
-      {!isLoading && !matchup && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{copy.matchup.empty.noSnapshot}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            {copy.matchup.empty.noData}
-          </CardContent>
-        </Card>
-      )}
+      {/* 4. Week Matchup Card + Breakdown */}
+      <WeekMatchupCard
+        matchup={matchup}
+        myTeamKey={teamKey}
+        statCategories={statCategories}
+        loading={matchupsLoading || capabilitiesLoading}
+        error={null}
+        lastSyncAt={lastSyncAt?.toISOString() || null}
+      />
 
-      {/* Matchup Content */}
-      {!isLoading && matchup && (
-        <Tabs defaultValue="summary" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="summary">{copy.matchup.tabs.summary}</TabsTrigger>
-            {showCategories && (
-              <TabsTrigger value="categories">{copy.matchup.tabs.categories}</TabsTrigger>
-            )}
-            {showPoints && (
-              <TabsTrigger value="points">{copy.matchup.tabs.details}</TabsTrigger>
-            )}
-          </TabsList>
+      {/* 5. Player Alerts */}
+      <PlayerAlerts
+        players={rosterPlayers}
+        loading={rosterLoading}
+        error={rosterError}
+        lastSyncAt={rosterLastSyncAt}
+      />
 
-          {/* Summary Tab */}
-          <TabsContent value="summary" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {matchup.teams.map((team) => (
-                <Card key={team.team_key}>
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      {team.logo_url && (
-                        <img
-                          src={team.logo_url}
-                          alt={team.name}
-                          className="h-8 w-8 rounded"
-                        />
-                      )}
-                      <CardTitle className="text-lg">{team.name}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {team.points_total !== null && team.points_total !== undefined && (
-                      <div className="text-3xl font-bold">
-                        {team.points_total.toFixed(1)}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+      {/* 6. All Matchups This Week */}
+      <AllMatchupsThisWeek
+        matchups={allMatchups}
+        myTeamKey={teamKey}
+        week={typeof currentWeek === 'string' ? parseInt(currentWeek) : currentWeek ?? null}
+        loading={matchupsLoading}
+        error={null}
+      />
 
-          {/* Categories Tab */}
-          {showCategories && (
-            <TabsContent value="categories" className="space-y-4">
-              <div className="space-y-2">
-                {matchup.teams[0]?.categories.map((category) => (
-                  <Card key={category.stat_id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{category.name}</span>
-                        <div className="flex items-center gap-2">
-                          {matchup.teams.map((team) => {
-                            const teamCategory = team.categories.find(
-                              (c) => c.stat_id === category.stat_id
-                            );
-                            return (
-                              <div key={team.team_key} className="text-right">
-                                <div className="font-semibold">
-                                  {teamCategory?.display_value || '-'}
-                                </div>
-                                {teamCategory?.result && (
-                                  <Badge variant="outline">
-                                    {teamCategory.result}
-                                  </Badge>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          )}
-
-          {/* Points Tab */}
-          {showPoints && (
-            <TabsContent value="points" className="space-y-4">
-              <div className="space-y-2">
-                {matchup.teams.map((team) => (
-                  <Card key={team.team_key}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{team.name}</span>
-                        <span className="text-2xl font-bold">
-                          {team.points_total?.toFixed(1) || '-'}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          )}
-        </Tabs>
-      )}
-
-      {/* Metadata */}
-      {lastSyncAt && (
-        <div className="text-xs text-muted-foreground text-center">
-          Última actualización: {lastSyncAt.toLocaleString()}
-        </div>
-      )}
+      {/* 7. Standings Snapshot */}
+      <StandingsSnapshot
+        standings={standings}
+        myTeamKey={teamKey}
+        loading={standingsLoading}
+        error={standingsError}
+        lastSyncAt={standingsLastSyncAt}
+      />
     </div>
   );
 }

@@ -7,19 +7,18 @@
 import { 
   ContextResponseSchema, 
   SyncStatusResponseSchema,
-  SetActiveContextResponseSchema,
   type ContextResponse,
   type SyncStatusResponse,
-  type SetActiveContextResponse
 } from "../schemas/api";
 
 const API_BASE = "/api/v1";
 
 /**
  * Fetch user context (leagues, teams, active selections)
+ * In DEMO_MODE, backend handles owner_id server-side
  */
-export async function fetchContext(ownerId: string): Promise<ContextResponse> {
-  const url = `${API_BASE}/context?owner_id=${encodeURIComponent(ownerId)}`;
+export async function fetchContext(): Promise<ContextResponse> {
+  const url = `${API_BASE}/context`;
   
   const response = await fetch(url);
   if (!response.ok) {
@@ -37,12 +36,10 @@ export async function fetchContext(ownerId: string): Promise<ContextResponse> {
  * This is the confirmed working approach.
  */
 export async function setActiveContext(
-  ownerId: string,
   leagueKey: string | null,
   teamKey: string | null
-): Promise<SetActiveContextResponse> {
+): Promise<ContextResponse> {
   const params = new URLSearchParams();
-  params.set("owner_id", ownerId);
   if (leagueKey) params.set("league_key", leagueKey);
   if (teamKey) params.set("team_key", teamKey);
   
@@ -60,21 +57,21 @@ export async function setActiveContext(
   }
   
   const data = await response.json();
-  return SetActiveContextResponseSchema.parse(data);
+  return ContextResponseSchema.parse(data);
 }
 
 /**
  * Fetch sync status for all domains
  */
 export async function fetchSyncStatus(
-  ownerId: string,
   leagueKey?: string
 ): Promise<SyncStatusResponse> {
   const params = new URLSearchParams();
-  params.set("owner_id", ownerId);
   if (leagueKey) params.set("league_key", leagueKey);
   
-  const url = `${API_BASE}/sync-status?${params.toString()}`;
+  const url = params.toString() 
+    ? `${API_BASE}/sync-status?${params.toString()}`
+    : `${API_BASE}/sync-status`;
   
   const response = await fetch(url);
   if (!response.ok) {
@@ -89,15 +86,15 @@ export async function fetchSyncStatus(
  * Helper to determine UI state from API response
  */
 export function getUIStateFromResponse<T>(
-  response: { success: boolean; data: T; errors: Array<{ message: string }> | null; meta: { last_sync_at: string } },
-  isEmpty: (data: T) => boolean
-): { state: "ready" | "empty" | "error"; data: T | null; error: string | null; lastSyncAt: string } {
-  if (!response.success) {
+  response: { success?: boolean; data: T | null; errors?: Array<{ message: string }> | null; meta?: { last_sync_at: string } },
+  isEmpty: (data: T | null) => boolean
+): { state: "ready" | "empty" | "error"; data: T | null; error: string | null; lastSyncAt: string | null } {
+  if (response.success === false) {
     return {
       state: "error",
       data: null,
       error: response.errors?.[0]?.message || "Unknown error",
-      lastSyncAt: response.meta.last_sync_at,
+      lastSyncAt: response.meta?.last_sync_at || null,
     };
   }
   
@@ -106,7 +103,7 @@ export function getUIStateFromResponse<T>(
       state: "empty",
       data: null,
       error: null,
-      lastSyncAt: response.meta.last_sync_at,
+      lastSyncAt: response.meta?.last_sync_at || null,
     };
   }
   
@@ -114,6 +111,6 @@ export function getUIStateFromResponse<T>(
     state: "ready",
     data: response.data,
     error: null,
-    lastSyncAt: response.meta.last_sync_at,
+    lastSyncAt: response.meta?.last_sync_at || null,
   };
 }

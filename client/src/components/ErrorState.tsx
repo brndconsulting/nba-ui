@@ -135,13 +135,13 @@ interface StaleStateProps {
 
 export function StaleState({ lastSync, onRefresh }: StaleStateProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-      <div className="text-yellow-600 dark:text-yellow-500">⚠️</div>
+    <div className="flex items-center gap-3 px-4 py-3 bg-accent border border-border rounded-md">
+      <div className="text-muted-foreground">⚠️</div>
       <div className="flex-1">
-        <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
+        <p className="text-sm font-medium text-foreground">
           Datos desactualizados
         </p>
-        <p className="text-xs text-yellow-800 dark:text-yellow-300">
+        <p className="text-xs text-muted-foreground">
           Última sincronización: {new Date(lastSync).toLocaleTimeString()}
         </p>
       </div>

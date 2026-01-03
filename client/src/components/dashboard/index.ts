@@ -1,0 +1,12 @@
+/**
+ * Dashboard Components Index
+ * 
+ * Export all dashboard components for easy import
+ */
+export { ManagerVsManager } from './ManagerVsManager';
+export { InsiderRecommendations } from './InsiderRecommendations';
+export { RealVsProjection } from './RealVsProjection';
+export { WeekMatchupCard } from './WeekMatchupCard';
+export { PlayerAlerts } from './PlayerAlerts';
+export { StandingsSnapshot } from './StandingsSnapshot';
+export { AllMatchupsThisWeek } from './AllMatchupsThisWeek';

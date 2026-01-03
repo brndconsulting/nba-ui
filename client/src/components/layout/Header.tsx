@@ -1,17 +1,13 @@
 /**
- * Header Component - Global fixed header (Mobile-First)
+ * Header Component - Global fixed header for Dashboard Shell (/app/*)
  * 
- * Layout:
- * - Row 1: Brand | Selectors | SyncStatus | ThemeToggle
- * - Row 2: All 7 module tabs (horizontal scroll on mobile)
+ * 100% shadcn/ui components:
+ * - Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+ * - Button
+ * - Skeleton
+ * - Tabs, TabsList, TabsTrigger (for module navigation)
  * 
- * Modules: HOME | MATCHUP | WAIVER WIRE | SCHEDULE | ANALYTICS | MANAGERS | SETTINGS
- * 
- * Rules:
- * - 100% shadcn/ui components
- * - No CSS ad-hoc, only tokens/theme
- * - Selectors NEVER hidden (mobile: compact version)
- * - If capabilities disables a module → tab hidden or disabled with tooltip
+ * Only Tailwind tokens - no custom CSS
  */
 import { Trophy } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -24,188 +20,135 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useAppContext } from "@/contexts/ContextProvider";
+import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { SyncStatusIndicator } from "../SyncStatusIndicator";
 import { ThemeToggle } from "../ThemeToggle";
-import type { League, Team } from "@/hooks/useContext";
-import { cn } from "@/lib/utils";
+import type { League } from "@/hooks/useContext";
 
-// All 7 module tabs per specification
+// 6 module tabs for /app/*
 const MODULE_TABS = [
-  { id: "home", label: "Home", path: "/" },
-  { id: "matchup", label: "Matchup", path: "/matchup" },
-  { id: "waiver", label: "Waiver Wire", path: "/waiver" },
-  { id: "schedule", label: "Schedule", path: "/schedule" },
-  { id: "analytics", label: "Analytics", path: "/analytics" },
-  { id: "managers", label: "Managers", path: "/managers" },
-  { id: "settings", label: "Settings", path: "/settings" },
+  { id: "dashboard", label: "Dashboard", path: "/app/matchup" },
+  { id: "waiver", label: "Waiver Wire", path: "/app/waiver" },
+  { id: "schedule", label: "Schedule", path: "/app/schedule" },
+  { id: "analytics", label: "Analytics", path: "/app/analytics" },
+  { id: "managers", label: "Managers", path: "/app/managers" },
+  { id: "settings", label: "Settings", path: "/app/settings" },
 ] as const;
 
 export function Header() {
   const [location, setLocation] = useLocation();
   const { context, activeLeague, activeTeam, setActiveContext, loading } = useAppContext();
   
-  // Get leagues from context
   const leagues: League[] = context?.leagues || [];
-  const teams: Team[] = activeLeague?.teams || [];
+  const { teams, loading: teamsLoading } = useLeagueTeams(activeLeague?.league_key || null);
   
-  // Handle league selection
   const handleLeagueChange = async (leagueKey: string) => {
-    const league = leagues.find((l: League) => l.league_key === leagueKey);
-    const firstTeam = league?.teams?.[0];
-    await setActiveContext(leagueKey, firstTeam?.team_key);
+    if (leagueKey !== activeLeague?.league_key) {
+      await setActiveContext(leagueKey, undefined);
+      setLocation('/select');
+    }
   };
   
-  // Handle team selection
   const handleTeamChange = async (teamKey: string) => {
     if (activeLeague?.league_key) {
       await setActiveContext(activeLeague.league_key, teamKey);
     }
   };
   
-  // Get current tab from location
-  const currentTab = MODULE_TABS.find(tab => tab.path === location)?.id || "home";
-  
-  // Check if tab is available based on capabilities (placeholder for now)
-  const isTabAvailable = (_tabId: string) => {
-    // TODO: Check capabilities from context
-    // For now, all tabs are available
-    return true;
-  };
+  const currentTeam = teams.find(t => t.team_key === activeTeam?.team_key) || activeTeam;
+  const currentTab = MODULE_TABS.find(tab => location.startsWith(tab.path))?.id || "dashboard";
   
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background">
       {/* Main Header Row */}
-      <div className="border-b">
-        <div className="container flex h-12 items-center gap-2">
-          {/* Brand */}
-          <Link 
-            href={activeLeague && activeTeam ? "/matchup" : "/"} 
-            className="flex items-center gap-1.5 font-semibold shrink-0"
-          >
-            <Trophy className="h-5 w-5 text-primary" />
-            <span className="hidden sm:inline text-sm">Sport Insider</span>
-          </Link>
+      <div className="container flex h-14 items-center gap-4">
+        {/* Brand */}
+        <Link 
+          href={activeLeague && activeTeam ? "/app/matchup" : "/select"} 
+          className="flex items-center gap-2 font-semibold"
+        >
+          <Trophy className="h-5 w-5 text-primary" />
+          <span className="hidden sm:inline text-sm">Sport Insider</span>
+        </Link>
+        
+        {/* Context Selectors */}
+        <div className="flex items-center gap-2 flex-1">
+          {/* League Selector */}
+          {loading ? (
+            <Skeleton className="h-9 w-40" />
+          ) : (
+            <Select
+              value={activeLeague?.league_key || ""}
+              onValueChange={handleLeagueChange}
+              disabled={leagues.length === 0}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Select League">
+                  {activeLeague?.name || "Select League"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {leagues.map((league: League) => (
+                  <SelectItem key={league.league_key} value={league.league_key}>
+                    {league.name} ({league.season})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           
-          {/* Context Selectors */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 ml-2">
-            {/* League Selector */}
-            {loading ? (
-              <Skeleton className="h-7 w-[100px] sm:w-[160px]" />
-            ) : (
-              <Select
-                value={activeLeague?.league_key || ""}
-                onValueChange={handleLeagueChange}
-                disabled={leagues.length === 0}
-              >
-                <SelectTrigger className="h-7 w-[100px] sm:w-[160px] text-xs">
-                  <SelectValue placeholder="League">
-                    {activeLeague ? (
-                      <span className="truncate">{activeLeague.name}</span>
-                    ) : (
-                      "Select League"
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {leagues.map((league: League) => (
-                    <SelectItem key={league.league_key} value={league.league_key}>
-                      {league.name} ({league.season})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            {/* Team Selector */}
-            {loading ? (
-              <Skeleton className="h-7 w-[80px] sm:w-[120px]" />
-            ) : (
-              <Select
-                value={activeTeam?.team_key || ""}
-                onValueChange={handleTeamChange}
-                disabled={!activeLeague || teams.length === 0}
-              >
-                <SelectTrigger className="h-7 w-[80px] sm:w-[120px] text-xs">
-                  <SelectValue placeholder="Team">
-                    {activeTeam ? (
-                      <span className="truncate">{activeTeam.name}</span>
-                    ) : (
-                      "Team"
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((team: Team) => (
-                    <SelectItem key={team.team_key} value={team.team_key}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          
-          {/* Right Controls */}
-          <div className="flex items-center gap-1 shrink-0">
-            <SyncStatusIndicator />
-            <ThemeToggle />
-          </div>
+          {/* Team Selector */}
+          {loading || teamsLoading ? (
+            <Skeleton className="h-9 w-32" />
+          ) : (
+            <Select
+              value={currentTeam?.team_key || ""}
+              onValueChange={handleTeamChange}
+              disabled={!activeLeague || teams.length === 0}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Select Team">
+                  {currentTeam?.name || "Select Team"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map((team) => (
+                  <SelectItem key={team.team_key} value={team.team_key}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        
+        {/* Right Controls */}
+        <div className="flex items-center gap-2">
+          <SyncStatusIndicator />
+          <ThemeToggle />
         </div>
       </div>
       
-      {/* Module Tabs Row - Horizontal scroll */}
-      <div className="border-b bg-muted/30">
+      {/* Module Tabs Row */}
+      <div className="border-t bg-muted/50">
         <div className="container">
-          <TooltipProvider>
-            <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide py-1.5 -mx-1 px-1">
-              {MODULE_TABS.map((tab) => {
-                const available = isTabAvailable(tab.id);
-                const isActive = currentTab === tab.id;
-                
-                const tabButton = (
-                  <Button
-                    key={tab.id}
-                    variant="ghost"
-                    size="sm"
-                    disabled={!available}
-                    className={cn(
-                      "h-7 px-3 text-xs shrink-0 rounded-full transition-colors",
-                      isActive 
-                        ? "bg-background text-foreground shadow-sm border" 
-                        : "text-muted-foreground hover:text-foreground",
-                      !available && "opacity-50 cursor-not-allowed"
-                    )}
-                    onClick={() => available && setLocation(tab.path)}
-                  >
-                    {tab.label}
-                  </Button>
-                );
-                
-                // Wrap disabled tabs in tooltip
-                if (!available) {
-                  return (
-                    <Tooltip key={tab.id}>
-                      <TooltipTrigger asChild>
-                        {tabButton}
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Not available for this league settings</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                }
-                
-                return tabButton;
-              })}
-            </nav>
-          </TooltipProvider>
+          <nav className="flex items-center gap-1 overflow-x-auto py-2">
+            {MODULE_TABS.map((tab) => {
+              const isActive = currentTab === tab.id;
+              
+              return (
+                <Button
+                  key={tab.id}
+                  variant={isActive ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setLocation(tab.path)}
+                >
+                  {tab.label}
+                </Button>
+              );
+            })}
+          </nav>
         </div>
       </div>
     </header>

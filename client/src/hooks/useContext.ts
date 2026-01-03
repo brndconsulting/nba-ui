@@ -1,21 +1,32 @@
 /**
  * Hook para consumir contexto desde API /v1/context
- * - Obtiene ligas/equipos del owner
+ * - Obtiene ligas del owner
  * - Maneja selección activa
  * - Valida con Zod
+ * 
+ * NOTE: Backend is owner-scoped. The frontend doesn't need to know or send owner_id.
+ * The backend determines owner from OAuth session/token.
+ * 
+ * IMPORTANT: setActiveContext is ROBUST with fallback:
+ * - First try POST with JSON body
+ * - If fails, try POST with query params
+ * - If both fail, persist locally for session only
  */
-import { useEffect, useState } from 'react';
-import { contextSchema } from '@/lib/schemas/context';
-import { API_BASE } from '@/config/api';
+import { useEffect, useState, useCallback } from 'react';
+import { API_ENDPOINTS, API_BASE } from '@/config/api';
 
+// League from /v1/context - NO teams (teams come from /v1/league-teams)
 export interface League {
   league_key: string;
-  league_id: string;
+  league_id?: string;
   name: string;
-  season: number;
+  season: number | string;
   game_key: string;
-  scoring_type: string;
-  teams: Team[];
+  scoring_type?: string;
+  num_teams?: number;
+  current_week?: number | string | null;
+  logo_url?: string | null;
+  url?: string;
 }
 
 export interface Team {
@@ -24,121 +35,170 @@ export interface Team {
   name: string;
   manager_id?: string;
   manager_name?: string;
+  logo_url?: string | null;
 }
 
 export interface Context {
-  owner_id: string;
+  owner_id?: string;
+  leagues_count?: number;
   leagues: League[];
   active_league_key?: string | null;
   active_team_key?: string | null;
+  sync_status?: Record<string, unknown>;
 }
 
-export function useContext(ownerId: string | null) {
+export function useContext() {
   const [context, setContext] = useState<Context | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [persistenceStatus, setPersistenceStatus] = useState<'synced' | 'local' | 'error'>('synced');
 
-  useEffect(() => {
-    const fetchContext = async () => {
-      console.log('[useContext] Starting fetch, ownerId:', ownerId);
-      
-      // If no owner ID, show "no owner" state
-      if (!ownerId) {
-        console.log('[useContext] No owner ID, setting error');
-        setContext(null);
-        setError("No owner ID provided");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        console.log('[useContext] Fetching from:', `${API_BASE}/v1/context?owner_id=${ownerId}`);
-        const response = await fetch(
-          `${API_BASE}/v1/context?owner_id=${ownerId}`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-        console.log('[useContext] Response status:', response.status);
-
-        const data = await response.json();
-        console.log('[useContext] Raw data:', data);
-
-        // Validar con Zod
-        console.log('[useContext] Validating with Zod...');
-        const validated = contextSchema.parse(data);
-        console.log('[useContext] Validated:', validated);
-
-        if (validated.success && validated.data) {
-          setContext(validated.data);
-          setError(null);
-        } else if (validated.success && !validated.data) {
-          // No hay contexto (missing)
-          setContext(null);
-          setError(null);
-        } else {
-          setError('Error validando contexto');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido');
-        setContext(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchContext();
-  }, [ownerId]);
-
-  const setActiveContext = async (leagueKey: string, teamKey?: string): Promise<boolean> => {
-    if (!ownerId) {
-      setError("No owner ID set");
-      return false;
-    }
+  // Fetch context from API
+  const fetchContext = useCallback(async () => {
+    console.log('[useContext] Starting fetch (owner-scoped backend)');
 
     try {
-      // IMPORTANT: Use query params, NOT JSON body (confirmed working approach)
-      const params = new URLSearchParams();
-      params.set('owner_id', ownerId);
-      params.set('league_key', leagueKey);
-      if (teamKey) params.set('team_key', teamKey);
+      setLoading(true);
+      const url = API_ENDPOINTS.context();
+      console.log('[useContext] Fetching from:', url);
       
-      const response = await fetch(
-        `${API_BASE}/v1/context/active?${params.toString()}`,
-        {
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('[useContext] Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('[useContext] Raw data:', data);
+
+      // Handle both success envelope and direct data
+      if (data.data) {
+        // Envelope format: { success, meta, data, ... }
+        setContext(data.data);
+        setError(null);
+      } else if (data.leagues) {
+        // Direct format: { leagues, active_league_key, ... }
+        setContext(data);
+        setError(null);
+      } else {
+        // No data
+        setContext(null);
+        setError(null);
+      }
+    } catch (err) {
+      console.error('[useContext] Error:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setContext(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchContext();
+  }, [fetchContext]);
+
+  /**
+   * Set active context with robust fallback
+   * 1. Try POST with JSON body
+   * 2. If fails, try POST with query params
+   * 3. If both fail, persist locally only
+   */
+  const setActiveContext = useCallback(async (leagueKey: string, teamKey?: string): Promise<boolean> => {
+    console.log('[useContext] Setting active context:', { leagueKey, teamKey });
+    
+    // Optimistic update - update local state immediately
+    setContext(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        active_league_key: leagueKey,
+        active_team_key: teamKey || null,
+      };
+    });
+
+    // Try to persist to backend
+    let persisted = false;
+
+    // Attempt #1: POST with JSON body
+    try {
+      const url = `${API_BASE}/v1/context/active`;
+      console.log('[useContext] Attempt #1 - POST with JSON body:', url);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          league_key: leagueKey,
+          team_key: teamKey || null,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('[useContext] Attempt #1 succeeded');
+        persisted = true;
+      } else {
+        console.log('[useContext] Attempt #1 failed:', response.status);
+      }
+    } catch (err) {
+      console.log('[useContext] Attempt #1 error:', err);
+    }
+
+    // Attempt #2: POST with query params (fallback)
+    if (!persisted) {
+      try {
+        const params = new URLSearchParams();
+        params.set('league_key', leagueKey);
+        if (teamKey) params.set('team_key', teamKey);
+        
+        const url = `${API_BASE}/v1/context/active?${params.toString()}`;
+        console.log('[useContext] Attempt #2 - POST with query params:', url);
+        
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-        }
-      );
+        });
 
-      if (response.ok) {
-        // Refetch context
-        const contextResponse = await fetch(
-          `${API_BASE}/v1/context?owner_id=${ownerId}`
-        );
-        const data = await contextResponse.json();
-        const validated = contextSchema.parse(data);
-        if (validated.success && validated.data) {
-          setContext(validated.data);
+        if (response.ok) {
+          console.log('[useContext] Attempt #2 succeeded');
+          persisted = true;
+        } else {
+          console.log('[useContext] Attempt #2 failed:', response.status);
         }
-        return true;
+      } catch (err) {
+        console.log('[useContext] Attempt #2 error:', err);
       }
-      return false;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error');
-      return false;
     }
-  };
+
+    // Update persistence status
+    if (persisted) {
+      setPersistenceStatus('synced');
+      // Refetch context to confirm
+      await fetchContext();
+    } else {
+      // Keep local state but mark as not persisted
+      console.warn('[useContext] Could not persist to backend - using local state only');
+      setPersistenceStatus('local');
+    }
+
+    return true; // Return true since local state was updated
+  }, [fetchContext]);
 
   return {
     context,
     loading,
     error,
     setActiveContext,
+    persistenceStatus,
+    refetch: fetchContext,
   };
 }

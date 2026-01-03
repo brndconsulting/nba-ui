@@ -1,19 +1,19 @@
 /**
  * SyncStatusIndicator - Data Health Indicator for Header
  * 
- * Shows compact badge with overall status + popover with domain details
- * 100% shadcn/ui components, no hardcoded styles
+ * 100% shadcn/ui components:
+ * - Badge
+ * - Button
+ * - Popover, PopoverContent, PopoverTrigger
+ * - Separator
+ * - Skeleton
  * 
- * Spec compliance:
- * - Indicador compacto (badge/dot) por overall_status
- * - Tooltip/Popover shadcn con detalle por dominio
- * - Timestamp accesible (last_sync_at)
+ * Only Tailwind tokens - no custom colors
  */
 
 import { useAppContext } from '@/contexts/ContextProvider';
 import { 
   useSyncStatus, 
-  getStatusDotClass, 
   formatSyncTime,
   type SyncStatusType,
   type DomainStatus,
@@ -27,27 +27,47 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { RefreshCw, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { 
+  RefreshCw, 
+  AlertCircle, 
+  CheckCircle2, 
+  Clock,
+  Loader2,
+} from 'lucide-react';
+
+/**
+ * Fixed domain list per spec v1.2 contract
+ */
+const REQUIRED_DOMAINS = [
+  { key: 'context_leagues', display_name: 'Context & Leagues' },
+  { key: 'league_teams', display_name: 'League Teams' },
+  { key: 'settings', display_name: 'Settings' },
+  { key: 'standings', display_name: 'Standings' },
+  { key: 'matchups', display_name: 'Matchups' },
+  { key: 'roster', display_name: 'Roster' },
+  { key: 'team_stats', display_name: 'Team Stats' },
+  { key: 'player_pool', display_name: 'Player Pool' },
+  { key: 'owner_profile', display_name: 'Owner Profile' },
+  { key: 'league_managers', display_name: 'League Managers' },
+  { key: 'league_strengths', display_name: 'League Strengths' },
+  { key: 'schedule', display_name: 'Schedule' },
+] as const;
 
 /**
  * Status icon based on domain status
  */
-function StatusIcon({ status }: { status: SyncStatusType }) {
+function StatusIcon({ status }: { status: SyncStatusType | 'running' }) {
   switch (status) {
     case 'fresh':
-      return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
+      return <CheckCircle2 className="h-4 w-4 text-primary" />;
     case 'stale':
-      return <Clock className="h-3.5 w-3.5 text-yellow-500" />;
+      return <Clock className="h-4 w-4 text-muted-foreground" />;
     case 'missing':
-      return <AlertCircle className="h-3.5 w-3.5 text-red-500" />;
+      return <AlertCircle className="h-4 w-4 text-destructive" />;
+    case 'running':
+      return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
     default:
-      return null;
+      return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
   }
 }
 
@@ -55,57 +75,43 @@ function StatusIcon({ status }: { status: SyncStatusType }) {
  * Single domain row in the popover
  */
 function DomainRow({ 
-  domain, 
-  info 
+  displayName,
+  info,
 }: { 
-  domain: string; 
-  info: DomainStatus;
+  displayName: string;
+  info: DomainStatus | null;
 }) {
+  const status = info?.status || 'missing';
+  const lastSyncAt = info?.last_sync_at || null;
+
   return (
-    <div className="flex items-center justify-between py-1.5">
+    <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-2">
-        <StatusIcon status={info.status} />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-sm font-medium cursor-help">
-              {info.display_name}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="left" className="max-w-[200px]">
-            <p className="text-xs">{info.description}</p>
-          </TooltipContent>
-        </Tooltip>
+        <StatusIcon status={status} />
+        <span className="text-sm">{displayName}</span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">
-          {formatSyncTime(info.last_sync_at)}
-        </span>
-        <div 
-          className={cn(
-            "h-2 w-2 rounded-full",
-            getStatusDotClass(info.status)
-          )} 
-        />
-      </div>
+      <span className="text-xs text-muted-foreground">
+        {formatSyncTime(lastSyncAt)}
+      </span>
     </div>
   );
 }
 
 /**
- * Overall status badge with color coding
+ * Overall status badge
  */
 function OverallStatusBadge({ 
   status, 
   loading 
 }: { 
-  status: 'fresh' | 'stale' | 'incomplete' | null;
+  status: 'fresh' | 'stale' | 'incomplete' | 'running' | null;
   loading: boolean;
 }) {
   if (loading) {
-    return <Skeleton className="h-6 w-16" />;
+    return <Skeleton className="h-6 w-20" />;
   }
 
-  const getVariant = () => {
+  const getVariant = (): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
       case 'fresh':
         return 'default';
@@ -113,6 +119,8 @@ function OverallStatusBadge({
         return 'secondary';
       case 'incomplete':
         return 'destructive';
+      case 'running':
+        return 'outline';
       default:
         return 'outline';
     }
@@ -126,27 +134,15 @@ function OverallStatusBadge({
         return 'Stale';
       case 'incomplete':
         return 'Incomplete';
+      case 'running':
+        return 'Syncing...';
       default:
         return 'Unknown';
     }
   };
 
-  const getDotClass = () => {
-    switch (status) {
-      case 'fresh':
-        return 'bg-green-500';
-      case 'stale':
-        return 'bg-yellow-500';
-      case 'incomplete':
-        return 'bg-red-500';
-      default:
-        return 'bg-muted';
-    }
-  };
-
   return (
-    <Badge variant={getVariant()} className="gap-1.5">
-      <span className={cn("h-1.5 w-1.5 rounded-full", getDotClass())} />
+    <Badge variant={getVariant()}>
       {getLabel()}
     </Badge>
   );
@@ -156,44 +152,31 @@ function OverallStatusBadge({
  * Main SyncStatusIndicator component
  */
 export function SyncStatusIndicator() {
-  const { ownerId, activeLeague } = useAppContext();
+  const { activeLeague } = useAppContext();
   const { data, loading, error, refetch } = useSyncStatus(
-    ownerId,
     activeLeague?.league_key || null
   );
 
-  // Don't render if no owner
-  if (!ownerId) {
-    return null;
-  }
-
-  // Error state
   if (error && !data) {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge variant="destructive" className="gap-1.5 cursor-help">
-            <AlertCircle className="h-3 w-3" />
-            Error
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-xs">{error}</p>
-        </TooltipContent>
-      </Tooltip>
+      <Badge variant="destructive" className="gap-1">
+        <AlertCircle className="h-3 w-3" />
+        Error
+      </Badge>
     );
   }
 
-  // Group domains by status for summary
-  const statusCounts: Partial<Record<SyncStatusType, number>> = data 
-    ? Object.values(data.sync_status).reduce(
-        (acc, info) => {
-          acc[info.status] = (acc[info.status] || 0) + 1;
-          return acc;
-        },
-        {} as Partial<Record<SyncStatusType, number>>
-      ) 
-    : {};
+  const syncStatusMap = data?.sync_status || {};
+  
+  const statusCounts = REQUIRED_DOMAINS.reduce(
+    (acc, domain) => {
+      const info = syncStatusMap[domain.key];
+      const status = info?.status || 'missing';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   return (
     <Popover>
@@ -201,7 +184,6 @@ export function SyncStatusIndicator() {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="h-8 gap-1.5 px-2"
           disabled={loading}
         >
           <OverallStatusBadge 
@@ -210,89 +192,61 @@ export function SyncStatusIndicator() {
           />
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        align="end" 
-        className="w-80"
-      >
-        <div className="space-y-3">
+      <PopoverContent align="end" className="w-72">
+        <div className="space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-sm">Data Health</h4>
+            <h4 className="font-medium text-sm">Data Health</h4>
             <Button 
               variant="ghost" 
-              size="sm" 
-              className="h-7 w-7 p-0"
+              size="icon"
+              className="h-8 w-8"
               onClick={() => refetch()}
               disabled={loading}
             >
-              <RefreshCw className={cn(
-                "h-3.5 w-3.5",
-                loading && "animate-spin"
-              )} />
-              <span className="sr-only">Refresh</span>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
 
           {/* Summary badges */}
-          {data && (
-            <div className="flex gap-2 flex-wrap">
-              {statusCounts.fresh && (
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  {statusCounts.fresh} fresh
-                </Badge>
-              )}
-              {statusCounts.stale && (
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-                  {statusCounts.stale} stale
-                </Badge>
-              )}
-              {statusCounts.missing && (
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                  {statusCounts.missing} missing
-                </Badge>
-              )}
-            </div>
-          )}
+          <div className="flex gap-2 flex-wrap">
+            {statusCounts.fresh > 0 && (
+              <Badge variant="default">{statusCounts.fresh} fresh</Badge>
+            )}
+            {statusCounts.stale > 0 && (
+              <Badge variant="secondary">{statusCounts.stale} stale</Badge>
+            )}
+            {statusCounts.missing > 0 && (
+              <Badge variant="destructive">{statusCounts.missing} missing</Badge>
+            )}
+          </div>
 
           <Separator />
 
           {/* Domain list */}
           {loading ? (
             <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-6 w-full" />
-              ))}
-            </div>
-          ) : data ? (
-            <div className="max-h-[300px] overflow-y-auto">
-              {Object.entries(data.sync_status).map(([domain, info]) => (
-                <DomainRow key={domain} domain={domain} info={info} />
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No sync data available
-            </p>
+            <div className="max-h-64 overflow-y-auto space-y-1">
+              {REQUIRED_DOMAINS.map((domain) => (
+                <DomainRow 
+                  key={domain.key} 
+                  displayName={domain.display_name}
+                  info={syncStatusMap[domain.key] || null} 
+                />
+              ))}
+            </div>
           )}
 
-          {/* Footer with context info */}
-          {data && (
-            <>
-              <Separator />
-              <div className="text-xs text-muted-foreground">
-                {data.league_key ? (
-                  <span>League: {data.league_key}</span>
-                ) : (
-                  <span>Global context</span>
-                )}
-                <span className="mx-2">•</span>
-                <span>{data.domains_count} domains</span>
-              </div>
-            </>
-          )}
+          <Separator />
+          
+          <p className="text-xs text-muted-foreground">
+            {REQUIRED_DOMAINS.length} domains tracked
+          </p>
         </div>
       </PopoverContent>
     </Popover>

@@ -1,28 +1,28 @@
 /**
  * App - Main application component
  * 
- * Structure:
- * - ErrorBoundary wraps everything
- * - ThemeProviders for dark/light and accent colors
- * - ContextProvider for user context (leagues/teams)
- * - ContextGate blocks access without active selection
- * - DashboardShell provides Header + Footer layout
- * - Router handles page navigation
+ * 3 SCREENS STRUCTURE:
+ * 1. Landing (/) - Welcome page with CTA "Enter App"
+ * 2. Select (/select) - League and team selection
+ * 3. Dashboard Shell (/app/*) - Main app with Header + Tabs
+ * 
+ * The Dashboard Shell has selectors in header to change league/team.
+ * If context is missing in /app/*, redirect to /select.
  */
-import React from 'react';
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
+import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider as NextThemesProvider } from "./contexts/ThemeContext";
 import { ThemeProvider } from "./contexts/ThemeProvider";
-import { ContextProvider } from "./contexts/ContextProvider";
-import { ContextGate } from "./components/ContextGate";
+import { ContextProvider, useAppContext } from "./contexts/ContextProvider";
 import { DashboardShell } from "./components/layout/DashboardShell";
 
 // Pages
-import Home from '@/pages/Home';
+import Landing from '@/pages/Landing';
+import SelectPage from '@/pages/Select';
 import Matchup from '@/pages/Matchup';
 import { Waiver } from '@/pages/Waiver';
 import Schedule from '@/pages/Schedule';
@@ -31,93 +31,114 @@ import Managers from '@/pages/Managers';
 import Settings from '@/pages/Settings';
 import ThemeMatrix from '@/pages/ThemeMatrix';
 
-function Router() {
+/**
+ * ContextGuard - Redirects to /select if context is missing in /app/* routes
+ */
+function ContextGuard({ children }: { children: React.ReactNode }) {
+  const { activeLeague, activeTeam, loading } = useAppContext();
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    // Only check after loading is complete
+    if (loading) return;
+    
+    // If we're in /app/* and missing context, redirect to /select
+    if (location.startsWith('/app') && (!activeLeague || !activeTeam)) {
+      setLocation('/select');
+    }
+  }, [loading, activeLeague, activeTeam, location, setLocation]);
+
+  // Show nothing while loading (prevents flash)
+  if (loading && location.startsWith('/app')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+/**
+ * AppRouter - Routes for /app/* with Dashboard Shell
+ */
+function AppRouter() {
   return (
     <DashboardShell>
       <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/matchup" component={Matchup} />
-        <Route path="/waiver" component={Waiver} />
-        <Route path="/schedule" component={Schedule} />
-        <Route path="/analytics" component={Analytics} />
-        <Route path="/managers" component={Managers} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/__theme-matrix" component={ThemeMatrix} />
-        <Route path="/404" component={NotFound} />
-        {/* Final fallback route */}
+        <Route path="/app/matchup" component={Matchup} />
+        <Route path="/app/waiver" component={Waiver} />
+        <Route path="/app/schedule" component={Schedule} />
+        <Route path="/app/analytics" component={Analytics} />
+        <Route path="/app/managers" component={Managers} />
+        <Route path="/app/settings" component={Settings} />
+        {/* Default /app -> /app/matchup */}
+        <Route path="/app">
+          <Redirect to="/app/matchup" />
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </DashboardShell>
   );
 }
 
-// Cookie utilities for cross-subdomain persistence
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-function setCookieAcrossSubdomains(name: string, value: string, days = 30) {
-  const maxAge = days * 24 * 60 * 60;
-  document.cookie =
-    `${encodeURIComponent(name)}=${encodeURIComponent(value)}; ` +
-    `Domain=manus.computer; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`;
-}
-
-function bootstrapOwnerId(): string | null {
-  // 1) Check query param (useful for debug/sharing)
-  const url = new URL(window.location.href);
-  const qp = url.searchParams.get("owner_id");
-
-  // 2) Check cookie (shared across subdomains)
-  const ck = getCookie("owner_id");
-
-  // 3) Check localStorage
-  const ls = localStorage.getItem("owner_id");
-
-  // Priority: localStorage > query param > cookie
-  const final = ls || qp || ck;
-
-  if (final) {
-    // Persist to both localStorage and cookie
-    localStorage.setItem("owner_id", final);
-    setCookieAcrossSubdomains("owner_id", final);
-    
-    // Clean up query param to not leave it visible
-    if (qp) {
-      url.searchParams.delete("owner_id");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }
-
-  return final;
+/**
+ * MainRouter - Top level routing
+ */
+function MainRouter() {
+  return (
+    <ContextGuard>
+      <Switch>
+        {/* Landing page */}
+        <Route path="/" component={Landing} />
+        
+        {/* Select league/team page */}
+        <Route path="/select" component={SelectPage} />
+        
+        {/* Dashboard Shell (all /app/* routes) */}
+        <Route path="/app/:rest*" component={AppRouter} />
+        
+        {/* Theme matrix for development */}
+        <Route path="/__theme-matrix" component={ThemeMatrix} />
+        
+        {/* Legacy routes - redirect to new structure */}
+        <Route path="/matchup">
+          <Redirect to="/app/matchup" />
+        </Route>
+        <Route path="/waiver">
+          <Redirect to="/app/waiver" />
+        </Route>
+        <Route path="/schedule">
+          <Redirect to="/app/schedule" />
+        </Route>
+        <Route path="/analytics">
+          <Redirect to="/app/analytics" />
+        </Route>
+        <Route path="/managers">
+          <Redirect to="/app/managers" />
+        </Route>
+        <Route path="/settings">
+          <Redirect to="/app/settings" />
+        </Route>
+        
+        {/* 404 */}
+        <Route path="/404" component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </ContextGuard>
+  );
 }
 
 function App() {
-  // Bootstrap owner_id from localStorage, cookie, or query param
-  const [ownerId, setOwnerId] = React.useState<string | null>(() => {
-    return bootstrapOwnerId();
-  });
-
-  // Listen for storage changes (for cross-tab sync)
-  React.useEffect(() => {
-    const handleStorage = () => {
-      setOwnerId(localStorage.getItem('owner_id') || null);
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
   return (
     <ErrorBoundary>
       <NextThemesProvider defaultTheme="dark" switchable>
         <ThemeProvider>
-          <ContextProvider ownerId={ownerId}>
+          <ContextProvider>
             <TooltipProvider>
               <Toaster />
-              <ContextGate>
-                <Router />
-              </ContextGate>
+              <MainRouter />
             </TooltipProvider>
           </ContextProvider>
         </ThemeProvider>
