@@ -26,6 +26,12 @@ export const leagueSchema = z.object({
   current_week: z.union([z.number(), z.string(), z.null()]).optional(),
   logo_url: z.string().nullable().optional(), // Can be "false" string from Yahoo
   url: z.string().optional(),
+  // is_finished: Yahoo's canonical flag for league status
+  // true = league ended, false = active, null/undefined = unknown (backend doesn't have it yet)
+  is_finished: z.boolean().nullable().optional(),
+  // Optional date fields if backend provides them
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
 }).passthrough();
 
 export const contextDataSchema = z.object({

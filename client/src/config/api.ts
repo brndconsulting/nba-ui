@@ -1,14 +1,29 @@
 /**
  * Configuración centralizada de API
  * 
- * En dev: usa /api (proxy de Vite al backend)
- * En prod: usa URL pública del backend
+ * En dev: usa proxy de Vite (/api -> backend)
+ * En prod: usa VITE_API_BASE_URL (URL pública del backend en Railway)
  * 
  * NOTE: Backend is owner-scoped, no need to pass owner_id from frontend.
  * The backend determines owner from OAuth session/token.
  */
 
-export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+// Production: VITE_API_BASE_URL must be set (e.g., https://nba-api-production-1f32.up.railway.app)
+// Development: falls back to /api which is proxied by Vite
+const getApiBase = (): string => {
+  // In production, VITE_API_BASE_URL is required
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // Legacy fallback
+  if (import.meta.env.VITE_API_BASE) {
+    return import.meta.env.VITE_API_BASE;
+  }
+  // Development: use proxy
+  return '/api';
+};
+
+export const API_BASE = getApiBase();
 
 /**
  * API Endpoints - All endpoints are owner-scoped on the backend

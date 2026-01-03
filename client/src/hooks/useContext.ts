@@ -27,6 +27,12 @@ export interface League {
   current_week?: number | string | null;
   logo_url?: string | null;
   url?: string;
+  // is_finished: Yahoo's canonical flag for league status
+  // true = league ended, false = active, null/undefined = unknown (backend doesn't have it yet)
+  is_finished?: boolean | null;
+  // Optional date fields if backend provides them
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 export interface Team {
