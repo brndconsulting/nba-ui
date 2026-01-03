@@ -3,13 +3,14 @@
  * 
  * Layout:
  * - Left: Brand (Trophy icon + "Sport Insider")
- * - Right: Theme toggle (single button, no dropdown)
+ * - Right: Theme selector (color) + Theme toggle (dark/light)
  * 
  * 100% shadcn/ui components only
  */
 import { Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { ThemeSelector } from "../ThemeSelector";
 import { ThemeToggle } from "../ThemeToggle";
 
 export function MinimalHeader() {
@@ -24,8 +25,11 @@ export function MinimalHeader() {
           </Button>
         </Link>
         
-        {/* Theme Toggle */}
-        <ThemeToggle />
+        {/* Theme Controls */}
+        <div className="flex items-center gap-1">
+          <ThemeSelector />
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

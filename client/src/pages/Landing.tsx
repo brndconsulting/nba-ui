@@ -30,7 +30,7 @@ const FEATURES = [
   {
     icon: Calendar,
     title: "Schedule Tracking",
-    description: "Plan ahead with NBA game schedules for your roster",
+    description: "Plan ahead with game schedules for your roster",
   },
   {
     icon: Zap,
@@ -52,7 +52,7 @@ export default function Landing() {
         {/* Hero */}
         <div className="text-center mb-4">
           <h1 className="text-2xl font-bold md:text-3xl">
-            Your Fantasy Basketball Companion
+            Your Fantasy Sports Companion
           </h1>
           <p className="mt-2 text-sm text-muted-foreground md:text-base">
             Analyze matchups, track stats, and dominate your league.

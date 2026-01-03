@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/ContextProvider";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { SyncStatusIndicator } from "../SyncStatusIndicator";
+import { ThemeSelector } from "../ThemeSelector";
 import { ThemeToggle } from "../ThemeToggle";
 import type { League } from "@/hooks/useContext";
 
@@ -124,8 +125,9 @@ export function Header() {
         </div>
         
         {/* Right Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <SyncStatusIndicator />
+          <ThemeSelector />
           <ThemeToggle />
         </div>
       </div>
